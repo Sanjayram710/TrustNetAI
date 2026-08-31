@@ -5,13 +5,15 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { 
   Shield, ArrowLeft, Download, RefreshCw, FileText, 
-  Calendar, FileCode, CheckCircle2, AlertCircle, Share2 
+  Calendar, FileCode, CheckCircle2, AlertCircle, Share2, Layers 
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { AnalysisResponse } from '@/lib/types';
 import { TrustScoreGauge } from '@/components/ui/TrustScoreGauge';
 import { SignalCard } from '@/components/ui/SignalCard';
 import { ModelBreakdownCard } from '@/components/ui/ModelBreakdown';
+import { SignalRadarChart } from '@/components/ui/SignalRadarChart';
+import { SuspiciousFramesTimeline } from '@/components/ui/SuspiciousFramesTimeline';
 import { FindingsList } from '@/components/ui/FindingsList';
 import { FeatureMatrix } from '@/components/ui/FeatureMatrix';
 import { ProcessingTimeline } from '@/components/ui/ProcessingTimeline';
@@ -146,9 +148,9 @@ export default function ResultsPage() {
         </div>
       </div>
 
-      {/* Main Results Grid: Gauge + Summary + Signal Cards */}
+      {/* Main Results Grid: Gauge + Preview + Signal Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Big Circular Gauge */}
+        {/* Left Column: Big Circular Gauge + Artifact Preview */}
         <div className="lg:col-span-1 space-y-6">
           <TrustScoreGauge
             score={analysis.trust_score}
@@ -186,7 +188,7 @@ export default function ResultsPage() {
           )}
         </div>
 
-        {/* Right Column: Summary & 4 Core Signal Cards */}
+        {/* Right Column: Executive Summary & 4 Core Signal Cards & Radar Chart */}
         <div className="lg:col-span-2 space-y-6">
           {/* Executive Summary Card */}
           <div className="p-6 rounded-2xl glass-panel border border-slate-800 space-y-3">
@@ -231,10 +233,18 @@ export default function ResultsPage() {
             />
           </div>
 
-          {/* Deep Model Breakdown */}
-          <ModelBreakdownCard modelBreakdown={analysis.model_breakdown} />
+          {/* Technical Radar Chart & Deep Model Breakdown */}
+          <div className="grid grid-cols-1 gap-6">
+            <SignalRadarChart signals={analysis.signals} />
+            <ModelBreakdownCard modelBreakdown={analysis.model_breakdown} />
+          </div>
         </div>
       </div>
+
+      {/* Video Suspicious Frames Section (if Video or Roadmap demonstration) */}
+      {analysis.content_type === 'video' && (
+        <SuspiciousFramesTimeline />
+      )}
 
       {/* Feature Matrix & Grounded Findings Section */}
       <div className="space-y-8">
