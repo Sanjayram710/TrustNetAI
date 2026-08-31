@@ -1,11 +1,18 @@
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Optional
+from pydantic import BaseModel, Field
 from app.core.config import settings
 from app.schemas.analysis import CoreSignals, TrustBand, RiskLevel
 
+class TrustEngineWeights(BaseModel):
+    media_authenticity: float = Field(0.45, ge=0.0, le=1.0)
+    manipulation_risk: float = Field(0.35, ge=0.0, le=1.0)
+    source_reliability: float = Field(0.10, ge=0.0, le=1.0)
+    claim_support: float = Field(0.10, ge=0.0, le=1.0)
+
 class TrustScoreEngine:
     """
-    TrustNet AI Multi-Signal Fusion & Scoring Service.
-    Combines independent authenticity, manipulation, provenance, and claim signals into a 0-100 Trust Score.
+    TrustNet AI Multi-Signal Fusion & Scoring Engine.
+    Combines independent authenticity, manipulation risk, provenance, and claim signals into a 0-100 Trust Score.
     """
 
     def __init__(
@@ -15,15 +22,19 @@ class TrustScoreEngine:
         weight_src: float = settings.WEIGHT_SOURCE_RELIABILITY,
         weight_claim: float = settings.WEIGHT_CLAIM_SUPPORT,
     ):
-        # Normalize weights
-        total_w = weight_auth + weight_manip + weight_src + weight_claim
-        self.w_auth = weight_auth / total_w
-        self.w_manip = weight_manip / total_w
-        self.w_src = weight_src / total_w
-        self.w_claim = weight_claim / total_w
+        self.set_weights(weight_auth, weight_manip, weight_src, weight_claim)
+
+    def set_weights(self, w_auth: float, w_manip: float, w_src: float, w_claim: float) -> None:
+        total_w = w_auth + w_manip + w_src + w_claim
+        if total_w <= 0:
+            total_w = 1.0
+        self.w_auth = w_auth / total_w
+        self.w_manip = w_manip / total_w
+        self.w_src = w_src / total_w
+        self.w_claim = w_claim / total_w
 
     def get_config(self) -> Dict[str, Any]:
-        """Return active engine configuration and band definitions."""
+        """Return active engine configuration, weights, and band criteria."""
         return {
             "weights": {
                 "media_authenticity": round(self.w_auth, 3),
@@ -47,15 +58,13 @@ class TrustScoreEngine:
         signals: CoreSignals,
         confidence: float = 0.85
     ) -> Tuple[int, TrustBand, RiskLevel]:
-        """
-        Compute fused trust score and assign appropriate TrustBand and RiskLevel.
-        """
+        """Compute fused trust score and assign appropriate TrustBand and RiskLevel."""
         s_auth = signals.authenticity_score
         s_manip = signals.manipulation_risk
         s_src = signals.source_reliability
         s_claim = signals.claim_support
         
-        # 1. Base Weighted Score (manipulation risk is inverted so 0 risk = 100 score contribution)
+        # 1. Base Weighted Score (manipulation risk is inverted so 0 risk = 100 contribution)
         s_base = (
             (self.w_auth * s_auth) +
             (self.w_manip * (100.0 - s_manip)) +
@@ -70,7 +79,7 @@ class TrustScoreEngine:
             
         score_penalized = max(0.0, s_base - penalty)
         
-        # 3. Confidence Calibration (if model is uncertain, regress toward 50.0)
+        # 3. Confidence Calibration (if model is uncertain, regress toward 50.0 neutrality)
         c = max(0.2, min(1.0, confidence))
         final_score_raw = (c * score_penalized) + ((1.0 - c) * 50.0)
         
@@ -81,6 +90,30 @@ class TrustScoreEngine:
         band, risk = self.classify_band_and_risk(final_score)
         
         return final_score, band, risk
+
+    def calculate(
+        self,
+        signals: CoreSignals,
+        confidence: float = 0.85,
+        custom_weights: Optional[TrustEngineWeights] = None
+    ) -> Dict[str, Any]:
+        """High-level calculate method returning full scoring dictionary."""
+        if custom_weights:
+            self.set_weights(
+                custom_weights.media_authenticity,
+                custom_weights.manipulation_risk,
+                custom_weights.source_reliability,
+                custom_weights.claim_support
+            )
+
+        trust_score, band, risk = self.compute_trust_score(signals, confidence)
+        return {
+            "trust_score": trust_score,
+            "trust_band": band,
+            "risk_level": risk,
+            "confidence": confidence,
+            "signals": signals
+        }
 
     @staticmethod
     def classify_band_and_risk(score: int) -> Tuple[TrustBand, RiskLevel]:
@@ -94,3 +127,5 @@ class TrustScoreEngine:
             return TrustBand.LOW_TRUST, RiskLevel.HIGH
         else:
             return TrustBand.VERY_LOW_TRUST, RiskLevel.CRITICAL
+
+trust_engine = TrustScoreEngine()

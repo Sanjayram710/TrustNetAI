@@ -8,9 +8,9 @@ from app.schemas.analysis import (
     ModelBreakdown, TextAnalysisRequest, TrustBand, RiskLevel, Finding, FindingSeverity
 )
 from app.services.image_service import image_service
-from app.services.trust_engine import TrustScoreEngine
+from app.services.trust_engine import trust_engine
 from app.services.repository import repository
-from app.models.text_model import TextClaimModel
+from app.models import model_registry
 
 router = APIRouter(prefix="/analyze", tags=["Analyze"])
 
@@ -40,7 +40,7 @@ async def analyze_text(request: TextAnalysisRequest):
     analysis_id = f"txt_{uuid.uuid4().hex[:10]}"
     now = datetime.now(timezone.utc)
     
-    text_model = TextClaimModel()
+    text_model = model_registry.get_model("text")
     res = text_model.predict(request.text)
     
     m_breakdown = res["model_breakdown"]
@@ -54,8 +54,7 @@ async def analyze_text(request: TextAnalysisRequest):
         claim_support=round(res["cross_source_agreement_score"], 1)
     )
     
-    engine = TrustScoreEngine()
-    trust_score, band, risk = engine.compute_trust_score(signals, confidence=res["confidence"])
+    trust_score, band, risk = trust_engine.compute_trust_score(signals, confidence=res["confidence"])
     
     findings = [
         Finding(
@@ -104,15 +103,18 @@ async def analyze_video(
     analysis_id = f"vid_{uuid.uuid4().hex[:10]}"
     now = datetime.now(timezone.utc)
     
+    video_model = model_registry.get_model("video")
+    res = video_model.predict(file.filename or "video.mp4")
+    m_breakdown = res["model_breakdown"]
+
     signals = CoreSignals(
-        authenticity_score=82.0,
-        manipulation_risk=12.0,
+        authenticity_score=round(m_breakdown["authentic_probability"] * 100.0, 1),
+        manipulation_risk=round(m_breakdown["manipulated_probability"] * 100.0, 1),
         source_reliability=75.0,
         claim_support=80.0
     )
     
-    engine = TrustScoreEngine()
-    trust_score, band, risk = engine.compute_trust_score(signals, confidence=0.85)
+    trust_score, band, risk = trust_engine.compute_trust_score(signals, confidence=res["confidence"])
     
     response = AnalysisResponse(
         id=analysis_id,
@@ -127,17 +129,10 @@ async def analyze_video(
         trust_score=trust_score,
         trust_band=band,
         risk_level=risk,
-        confidence=0.85,
+        confidence=res["confidence"],
         summary_explanation="Video temporal analysis: Consistent optical flow and facial keypoint dynamics observed.",
         signals=signals,
-        model_breakdown=ModelBreakdown(
-            authentic_probability=0.82,
-            ai_generated_probability=0.10,
-            manipulated_probability=0.08,
-            model_name="TrustNet-Video-Temporal-v1 (Demo / Roadmap)",
-            is_demo_inference=True,
-            calibrated_uncertainty=0.15
-        ),
+        model_breakdown=ModelBreakdown.model_validate(m_breakdown),
         features=None,
         findings=[
             Finding(
@@ -164,14 +159,17 @@ async def analyze_audio(
     analysis_id = f"aud_{uuid.uuid4().hex[:10]}"
     now = datetime.now(timezone.utc)
     
+    audio_model = model_registry.get_model("audio")
+    res = audio_model.predict(file.filename or "audio.wav")
+    m_breakdown = res["model_breakdown"]
+
     signals = CoreSignals(
-        authenticity_score=78.0,
-        manipulation_risk=14.0,
+        authenticity_score=round(m_breakdown["authentic_probability"] * 100.0, 1),
+        manipulation_risk=round(m_breakdown["manipulated_probability"] * 100.0, 1),
         source_reliability=70.0,
         claim_support=75.0
     )
-    engine = TrustScoreEngine()
-    trust_score, band, risk = engine.compute_trust_score(signals, confidence=0.82)
+    trust_score, band, risk = trust_engine.compute_trust_score(signals, confidence=res["confidence"])
     
     response = AnalysisResponse(
         id=analysis_id,
@@ -186,17 +184,10 @@ async def analyze_audio(
         trust_score=trust_score,
         trust_band=band,
         risk_level=risk,
-        confidence=0.82,
+        confidence=res["confidence"],
         summary_explanation="Audio spectrogram analysis: Vocal acoustic energy adheres to organic physiological parameters.",
         signals=signals,
-        model_breakdown=ModelBreakdown(
-            authentic_probability=0.78,
-            ai_generated_probability=0.15,
-            manipulated_probability=0.07,
-            model_name="TrustNet-Audio-Voice-v1 (Demo / Roadmap)",
-            is_demo_inference=True,
-            calibrated_uncertainty=0.18
-        ),
+        model_breakdown=ModelBreakdown.model_validate(m_breakdown),
         features=None,
         findings=[
             Finding(
@@ -223,14 +214,17 @@ async def analyze_document(
     analysis_id = f"doc_{uuid.uuid4().hex[:10]}"
     now = datetime.now(timezone.utc)
     
+    doc_model = model_registry.get_model("document")
+    res = doc_model.predict(file.filename or "document.pdf")
+    m_breakdown = res["model_breakdown"]
+
     signals = CoreSignals(
-        authenticity_score=85.0,
-        manipulation_risk=10.0,
+        authenticity_score=round(m_breakdown["authentic_probability"] * 100.0, 1),
+        manipulation_risk=round(m_breakdown["manipulated_probability"] * 100.0, 1),
         source_reliability=80.0,
         claim_support=80.0
     )
-    engine = TrustScoreEngine()
-    trust_score, band, risk = engine.compute_trust_score(signals, confidence=0.88)
+    trust_score, band, risk = trust_engine.compute_trust_score(signals, confidence=res["confidence"])
     
     response = AnalysisResponse(
         id=analysis_id,
@@ -245,17 +239,10 @@ async def analyze_document(
         trust_score=trust_score,
         trust_band=band,
         risk_level=risk,
-        confidence=0.88,
+        confidence=res["confidence"],
         summary_explanation="Document layout and typography analysis: Consistent font kerning and rendering artifacts.",
         signals=signals,
-        model_breakdown=ModelBreakdown(
-            authentic_probability=0.85,
-            ai_generated_probability=0.08,
-            manipulated_probability=0.07,
-            model_name="TrustNet-DocLayout-v1 (Demo / Roadmap)",
-            is_demo_inference=True,
-            calibrated_uncertainty=0.12
-        ),
+        model_breakdown=ModelBreakdown.model_validate(m_breakdown),
         features=None,
         findings=[
             Finding(

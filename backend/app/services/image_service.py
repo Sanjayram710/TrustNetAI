@@ -6,8 +6,8 @@ from fastapi import UploadFile
 
 from app.core.config import settings
 from app.core.security import validate_and_save_upload
-from app.models.image_model import ImageAuthenticityModel
-from app.services.trust_engine import TrustScoreEngine
+from app.models import model_registry
+from app.services.trust_engine import trust_engine
 from app.services.explainability import ExplainabilityService
 from app.services.repository import repository
 from app.schemas.analysis import (
@@ -17,8 +17,9 @@ from app.schemas.analysis import (
 
 class ImageAnalysisService:
     def __init__(self):
-        self.model = ImageAuthenticityModel()
-        self.trust_engine = TrustScoreEngine()
+        # Retrieve singleton model from registry
+        self.model = model_registry.get_model("image")
+        self.trust_engine = trust_engine
 
     async def process_image_upload(
         self,
@@ -37,7 +38,7 @@ class ImageAnalysisService:
         
         preview_url = f"/api/analysis/preview/{os.path.basename(saved_path)}"
 
-        # 2. Run model inference & visual feature extraction
+        # 2. Run model inference & visual feature extraction through standard predict pipeline
         model_result = self.model.predict(saved_path, associated_claim=associated_claim)
         
         m_breakdown = model_result["model_breakdown"]
@@ -65,7 +66,6 @@ class ImageAnalysisService:
         # Claim support signal
         claim_support = 70.0  # Default neutral/unverified claim score
         if associated_claim:
-            # Check length and clarity
             if len(associated_claim.strip()) > 10:
                 claim_support = 75.0
                 
@@ -103,7 +103,7 @@ class ImageAnalysisService:
             ProcessingStep(step_number=2, name="EXIF & Hardware Metadata Extraction", status="completed", duration_ms=60, message=f"EXIF: {'Found' if features_dict.get('has_exif') else 'None'}"),
             ProcessingStep(step_number=3, name="Error Level Analysis (ELA)", status="completed", duration_ms=110, message=f"Discrepancy index: {features_dict.get('ela_discrepancy_score')}/100"),
             ProcessingStep(step_number=4, name="OpenCV High-Frequency Noise & Sharpness", status="completed", duration_ms=85, message=f"Noise var: {features_dict.get('noise_variance')}"),
-            ProcessingStep(step_number=5, name="Deep Vision Probabilistic Classification", status="completed", duration_ms=210, message=f"P(Authentic): {p_auth:.2f}, P(AI): {m_breakdown['ai_generated_probability']:.2f}"),
+            ProcessingStep(step_number=5, name="Deep Vision Ensemble Classification", status="completed", duration_ms=210, message=f"P(Authentic): {p_auth:.2f}, P(AI): {m_breakdown['ai_generated_probability']:.2f}"),
             ProcessingStep(step_number=6, name="Multi-Signal Fusion & Trust Scoring", status="completed", duration_ms=30, message=f"Score: {trust_score}/100 ({trust_band.value})"),
             ProcessingStep(step_number=7, name="Explainability & Finding Synthesis", status="completed", duration_ms=40, message=f"{len(findings)} grounded findings generated")
         ]
