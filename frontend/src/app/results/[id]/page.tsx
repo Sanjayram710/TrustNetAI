@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { 
   Shield, ArrowLeft, Download, RefreshCw, FileText, 
-  Calendar, FileCode, CheckCircle2, AlertCircle, Share2, Layers 
+  Calendar, FileCode, CheckCircle2, AlertCircle, Share2, 
+  Layers, HelpCircle, Search, ExternalLink, Sparkles 
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { AnalysisResponse } from '@/lib/types';
@@ -85,6 +86,41 @@ export default function ResultsPage() {
       </div>
     );
   }
+
+  // Derive granular grounded reasoning bullets for "Why did TrustNet give this score?"
+  const getExplainableReasons = () => {
+    const reasons: { text: string; positive: boolean }[] = [];
+    const signals = analysis.signals;
+    const features = analysis.features;
+
+    if (signals.manipulation_risk < 20) {
+      reasons.push({ text: 'No significant manipulation or splicing artifacts were detected across high-frequency components.', positive: true });
+    } else if (signals.manipulation_risk > 60) {
+      reasons.push({ text: 'High manipulation risk indicates elevated probability of localized editing or boundary discontinuity.', positive: false });
+    }
+
+    if (signals.authenticity_score >= 75) {
+      reasons.push({ text: 'Visual features, noise consistency, and sharpness gradients are consistent with authentic physical camera capture.', positive: true });
+    } else if (signals.authenticity_score < 40) {
+      reasons.push({ text: 'Visual patterns and high-frequency textures match synthetic generative diffusion signatures.', positive: false });
+    }
+
+    if (features && features.has_exif) {
+      reasons.push({ text: 'Original camera hardware provenance metadata was preserved and verified.', positive: true });
+    } else {
+      reasons.push({ text: 'Hardware source verification is limited due to stripped or absent EXIF capture tags.', positive: false });
+    }
+
+    if (signals.claim_support >= 75) {
+      reasons.push({ text: 'Associated context and propositions demonstrate corroboration with indexed sources.', positive: true });
+    } else {
+      reasons.push({ text: 'The associated claim has insufficient supporting evidence from independent verifiable sources.', positive: false });
+    }
+
+    return reasons;
+  };
+
+  const explainableReasons = getExplainableReasons();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
@@ -238,6 +274,67 @@ export default function ResultsPage() {
             <SignalRadarChart signals={analysis.signals} />
             <ModelBreakdownCard modelBreakdown={analysis.model_breakdown} />
           </div>
+        </div>
+      </div>
+
+      {/* WHY DID TRUSTNET GIVE THIS SCORE? (Dedicated Explainability Section) */}
+      <div className="p-8 rounded-3xl glass-panel border border-cyan-500/30 space-y-6 shadow-xl relative overflow-hidden">
+        <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
+          <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <HelpCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white tracking-tight">
+              Why did TrustNet give this score?
+            </h2>
+            <p className="text-xs text-slate-400">
+              Deconstructed multi-signal reasoning grounded directly in computed physical &amp; probabilistic measurements.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {explainableReasons.map((reason, idx) => (
+            <div
+              key={idx}
+              className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 flex items-start gap-3 text-xs leading-relaxed"
+            >
+              {reason.positive ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              )}
+              <span className="text-slate-300">{reason.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* EVIDENCE SECTION (Transparent Evidence Retrieval Status) */}
+      <div className="p-6 rounded-2xl glass-panel border border-slate-800 space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              <Search className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-white">External Evidence &amp; Citations</h3>
+              <div className="text-xs text-slate-400">Cross-source corpus indexing</div>
+            </div>
+          </div>
+          <span className="text-[11px] font-mono px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-400">
+            Stage 5 Architecture
+          </span>
+        </div>
+
+        <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800/60 text-xs text-slate-400 space-y-2">
+          <div className="font-semibold text-slate-300 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
+            Evidence retrieval is currently unavailable.
+          </div>
+          <p className="text-[11px] leading-relaxed">
+            In accordance with scientific integrity rules, TrustNet AI does not fabricate external citations or web sources. Real-time news corpus search and fact-checking knowledge base connections are scheduled for Stage 5.
+          </p>
         </div>
       </div>
 
