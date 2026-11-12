@@ -1,251 +1,158 @@
-# TrustNet AI — Multimodal Content Authenticity & Trust Scoring Platform
+<div align="center">
 
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Python: 3.11](https://img.shields.io/badge/Python-3.11-brightgreen.svg)
-![FastAPI: 0.111+](https://img.shields.io/badge/FastAPI-0.111+-009688.svg)
-![Next.js: 14.2](https://img.shields.io/badge/Next.js-14.2-black.svg)
-![TypeScript: 5.5](https://img.shields.io/badge/TypeScript-5.5-blue.svg)
-![TailwindCSS: 3.4](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC.svg)
+# Multimodal Deepfake Detection System
 
-**TrustNet AI** is a production-style full-stack AI platform designed for multimodal content authenticity estimation and explainable trust scoring. It analyzes digital artifacts (images, videos, audio clips, news claims, and documents) to determine whether content is authentic, AI-generated (synthetic), or manipulated, delivering an explainable 0–100 Trust Score.
+### Image · Audio · Video forensics with explainable AI evidence
 
----
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-EE4C2C?logo=pytorch)](https://pytorch.org)
+[![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B?logo=streamlit)](https://streamlit.io)
+[![XGBoost](https://img.shields.io/badge/XGBoost-Fusion-189FDD)](https://xgboost.ai)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-## 📑 Table of Contents
+**A production-style forensic analysis system that detects AI-generated media across three modalities — and explains *why* it flagged them.**
 
-1. [Project Overview](#1-project-overview)
-2. [Key Features](#2-key-features)
-3. [Architecture & System Design](#3-architecture--system-design)
-4. [Technology Stack](#4-technology-stack)
-5. [Installation & Quickstart](#5-installation--quickstart)
-6. [Frontend Setup](#6-frontend-setup)
-7. [Backend Setup](#7-backend-setup)
-8. [Environment Variables](#8-environment-variables)
-9. [API Documentation](#9-api-documentation)
-10. [Model Integration Architecture](#10-model-integration-architecture)
-11. [Dataset Instructions & Mounting](#11-dataset-instructions--mounting)
-12. [Testing & Verification](#12-testing--verification)
-13. [Future Roadmap (Stages 1–6)](#13-future-roadmap-stages-16)
-14. [Scientific Limitations & Ethical AI](#14-scientific-limitations--ethical-ai)
+| Modality | Architecture | Dataset | Test AUC |
+|---|---|---|---|
+| **Image** | CoAtNet-0, 5-channel (RGB + ELA + FFT) | ARTIFACT — 22 generators, 130K samples | **0.9173** |
+| **Audio** | Whisper-Base encoder + XGBoost | ASVspoof 2019 LA — 71K samples | **0.9886** |
+| **Video** | Multimodal fusion (CoAtNet + Whisper + XGBoost) | FakeAVCeleb v1.2 — 21.5K videos | **0.9250** |
+
+</div>
+
+> Video AUC measured on a balanced test set (100 real / 100 fake) with an optimized decision threshold of 0.578.
 
 ---
 
-## 1. Project Overview
+## What Makes This System Different
 
-Digital content manipulation and generative diffusion models (Midjourney, DALL-E 3, Stable Diffusion, Sora) have created an urgent need for verifiable, explainable content forensics. TrustNet AI does not present itself as an infallible "truth machine"; rather, it computes independent statistical signals across:
-- **Media Authenticity** ($S_{\text{auth}}$): Probability of organic sensor capture vs. synthetic generation.
-- **Manipulation Risk** ($S_{\text{manip}}$): Probability of localized splicing, copy-move, or retouching.
-- **Source Reliability** ($S_{\text{src}}$): Metadata provenance and header integrity.
-- **Claim Support** ($S_{\text{claim}}$): Contextual proposition corroboration and stance consensus.
-
-These dimensions are fused via a transparent mathematical engine with non-linear tampering penalties into a calibrated 0–100 Trust Score.
+Most deepfake detectors are black-box classifiers. This system is built as a **forensic tool**: every verdict ships with human-interpretable evidence — compression-inconsistency maps, activation heatmaps, spectral analyses, and per-modality contribution scores — so an analyst can audit the decision instead of trusting it blindly.
 
 ---
 
-## 2. Key Features
+## System Architecture
 
-- **Multimodal Analysis Hub**: Support for Images, Text & Claims, Videos, Audio clips, and Documents.
-- **Computer Vision Forensics**:
-  - High-pass spatial filter noise residual variance ($Var_{\text{noise}}$).
-  - Error Level Analysis (ELA) re-compression discrepancy delta mapping.
-  - Laplacian gradient sharpness variance.
-  - EXIF camera hardware tags and post-processing software header detection.
-- **Explainability & Transparency**:
-  - *"Why did TrustNet give this score?"* section with signal-grounded reasoning.
-  - Multi-dimensional Forensic Radar Chart comparing all 4 signal vectors.
-  - Visual model breakdown for Authentic, AI-Generated, and Manipulated predictions with calibrated uncertainty margins.
-  - Transparent evidence status (`Evidence retrieval is currently unavailable.` when search APIs are unconfigured).
-- **History Analytics Dashboard**: Search, filter by modality and risk band, aggregate metrics (Total, Authentic, Suspicious, High Risk, Avg Trust Score), and persistent storage.
+```mermaid
+flowchart TD
+    APP["Streamlit Application (FinalFrameWork/app.py)"] --> IMG["IMAGE branch"]
+    APP --> VID["VIDEO branch"]
+    APP --> AUD["AUDIO branch"]
+
+    subgraph IB["Image pipeline"]
+        IMG --> I1["Preprocess: RGB + ELA map + FFT spectrum<br/>stacked into a 5-channel tensor"]
+        I1 --> I2["CoAtNet-0 (5-channel input)<br/>sigmoid head: Real / Fake"]
+    end
+
+    subgraph VB["Video pipeline"]
+        VID --> V1["Extract frames + demux audio (FFmpeg)"]
+        V1 --> V2["Per-frame CoAtNet embeddings (768-d)<br/>+ Whisper audio embeddings (512-d)"]
+        V2 --> V3["Statistical temporal pooling:<br/>mean + max + std across frames"]
+        V3 --> V4["XGBoost fusion classifier (2816-d input)"]
+    end
+
+    subgraph AB["Audio pipeline"]
+        AUD --> A1["Whisper-Base encoder<br/>acoustic feature extraction"]
+        A1 --> A2["XGBoost classifier<br/>(ASVspoof 2019 LA)"]
+    end
+
+    I2 --> R["Forensic Report (ReportForinces)<br/>ELA · EigenCAM / ScoreCAM · spectrograms<br/>temporal occlusion · modality contribution"]
+    V4 --> R
+    A2 --> R
+```
 
 ---
 
-## 3. Architecture & System Design
+## Key Technical Contributions
 
-```text
-TrustNetAI/
-├── backend/                      # Python 3.11 / FastAPI Service
-│   ├── app/
-│   │   ├── api/routes/           # /api/analyze, /api/analysis, /api/config
-│   │   ├── core/                 # Config, security, MIME & magic bytes
-│   │   ├── models/               # BaseAuthenticityModel, ModelRegistry, image/video/audio/text/doc
-│   │   ├── schemas/              # Pydantic v2 schemas
-│   │   ├── services/             # Image service, Trust score engine, Explainability, Repository
-│   │   └── main.py               # FastAPI entrypoint, lifespan, CORS
-│   ├── tests/                    # Pytest test suite (16 passing tests)
-│   ├── requirements.txt
-│   └── pytest.ini
-├── frontend/                     # Next.js 14 / TypeScript / Tailwind CSS
-│   ├── src/
-│   │   ├── app/                  # App router: /, /analyze, /results/[id], /dashboard, /technology, /about
-│   │   ├── components/           # Radar charts, gauges, timelines, dropzones
-│   │   └── lib/                  # Typed API client, types, constants
-│   ├── package.json
-│   └── tailwind.config.ts
-├── datasets/                     # Dataset schemas and benchmark mounting guides
-│   └── README.md
-├── notebooks/                    # Prototyping & feature exploration notebooks
-│   └── README.md
-├── docs/                         # Comprehensive documentation
-│   ├── architecture.md
-│   ├── trust_score_formula.md
-│   └── api_reference.md
-├── docker/                       # Dockerfiles
-│   ├── Dockerfile.backend
-│   └── Dockerfile.frontend
-├── docker-compose.yml
-├── .env.example
+1. **5-Channel multi-domain input** — the image detector sees pixel space (RGB), compression space (Error Level Analysis), and frequency space (FFT) *simultaneously*, catching artifacts that any single domain misses.
+2. **Transfer learning for anti-spoofing** — Whisper's ASR pre-training is repurposed as an acoustic feature extractor; an XGBoost head reaches **AUC 0.9886** with zero domain-specific neural training.
+3. **Intermediate fusion** — feature-level concatenation of visual + acoustic embeddings lets the video classifier detect cross-modal desynchronization (face swap with original voice, voice clone with original face) without training an expensive end-to-end video network.
+4. **Statistical temporal pooling** — mean + max + std pooling across frame embeddings explicitly encodes temporal inconsistency, a primary deepfake signature.
+5. **Gradient-free interpretability** — EigenCAM and ScoreCAM produce stable activation maps for the non-standard 5-channel architecture, where gradient-based CAMs are noisy.
+
+---
+
+## Forensic Explainability Module (`ReportForinces/`)
+
+| Evidence Type | Technique | What It Exposes |
+|---|---|---|
+| Image | Error Level Analysis (ELA) | Inconsistent re-compression from face blending/splicing |
+| Image | EigenCAM / ScoreCAM | Which textures and regions triggered the detection |
+| Audio | Log-mel spectrogram analysis | Unnatural spectral flatness, missing formants of TTS/VC |
+| Audio | Temporal occlusion heatmaps | The exact time segments carrying spoof artifacts |
+| Video | Frame-by-frame probability timeline | Localized temporal manipulations |
+| Video | Modality contribution analysis | Was the verdict driven by the face or the voice? |
+
+Full methodology: [`ReportForinces/AI_Forensic_Analysis_Report.md`](ReportForinces/AI_Forensic_Analysis_Report.md)
+
+---
+
+## Repository Structure
+
+```
+AI-DeepfakeDetector/
+├── Audio/                     # Audio branch: training notebook (Colab T4) + docs
+├── Images/                    # Image branch: training notebook (Kaggle T4) + docs
+├── Video/                     # Video branch: fusion pipeline + balanced evaluation
+├── FinalFrameWork/            # Streamlit app + inference modules + weights dirs
+│   ├── app.py
+│   ├── inference/
+│   └── requirements.txt
+├── ReportForinces/            # Forensic report generator + methodology docs
 └── README.md
 ```
 
----
-
-## 4. Technology Stack
-
-| Layer | Technologies |
-|---|---|
-| **Frontend** | Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Framer Motion, Recharts, Lucide Icons |
-| **Backend** | Python 3.11, FastAPI, Pydantic v2, Pillow, OpenCV, NumPy, Pytest, Uvicorn |
-| **Persistence** | Thread-safe in-memory cache + persistent JSON repository (PostgreSQL-ready schema) |
-| **DevOps** | Docker, Docker Compose, GitHub Actions compatible |
+Per-branch deep dives: [IMAGE_BRANCH.md](Images/IMAGE_BRANCH.md) · [AUDIO_BRANCH.md](Audio/AUDIO_BRANCH.md) · [VIDEO_BRANCH.md](Video/VIDEO_BRANCH.md) · [FRAMEWORK.md](FinalFrameWork/FRAMEWORK.md)
 
 ---
 
-## 5. Installation & Quickstart
+## Getting Started
+
+### 1. Prerequisites
+
+**FFmpeg** is required for video/audio demuxing:
+- Windows: download from ffmpeg.org and add to PATH
+- Linux: `sudo apt-get install ffmpeg` · macOS: `brew install ffmpeg`
+
+### 2. Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/Sanjayram710/TrustNetAI.git
-cd TrustNetAI
+git clone https://github.com/YazanAi-Dev3/AI-DeepfakeDetector.git
+cd AI-DeepfakeDetector/FinalFrameWork
 
-# Copy environment variables
-cp .env.example .env
-```
-
-### Running with Docker Compose
-```bash
-docker-compose up --build
-```
-- Frontend: `http://localhost:3000`
-- Backend API Docs: `http://localhost:8000/api/docs`
-
----
-
-## 6. Frontend Setup
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
----
-
-## 7. Backend Setup
-
-```bash
-cd backend
+python -m venv venv
+# Windows: venv\Scripts\activate | Linux/macOS: source venv/bin/activate
 pip install -r requirements.txt
-python -m pytest tests
-uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```
+
+### 3. Model Weights
+
+- **Image Detection (Ready Out-of-the-Box):** A pre-trained CNN image authenticity detector checkpoint (`best_image_detector.pt`) is included in `FinalFrameWork/models/` for immediate testing on Real vs. AI-Generated images.
+- **Optional Advanced Weights:**
+  - `best_coatnet_5ch.pth` → `FinalFrameWork/models/`
+  - `xgboost_asvspoof_model.joblib` → `FinalFrameWork/models/`
+  - `xgboost_fusion_model.joblib` → `FinalFrameWork/Final-Vid/`
+
+### 4. Launch
+
+```bash
+streamlit run app.py
+```
+
+Open **http://localhost:8501**.
 
 ---
 
-## 8. Environment Variables
+## Datasets
 
-Create `.env` using `.env.example`:
-
-```env
-# Frontend
-NEXT_PUBLIC_API_URL=http://localhost:8000
-
-# Backend
-ENVIRONMENT=development
-HOST=127.0.0.1
-PORT=8000
-ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-
-# Storage & Upload Limits
-UPLOAD_DIR=./uploads
-MAX_FILE_SIZE_MB=15
-ALLOWED_IMAGE_EXTENSIONS=jpg,jpeg,png,webp
-```
-
----
-
-## 9. API Documentation
-
-Interactive Swagger OpenAPI docs are live at `http://localhost:8000/api/docs`.
-
-| Method | Endpoint | Description |
+| Modality | Dataset | Target Manipulations |
 |---|---|---|
-| `POST` | `/api/analyze/image` | Upload image for ELA, noise residual, and deep vision ensemble analysis. |
-| `POST` | `/api/analyze/text` | Submit text claim for stance and cross-source consensus analysis. |
-| `POST` | `/api/analyze/video` | Video temporal and frame-level analysis endpoint (Roadmap Demo). |
-| `POST` | `/api/analyze/audio` | Audio synthetic voice clone detection endpoint (Roadmap Demo). |
-| `POST` | `/api/analyze/document`| Document layout tampering and font consistency endpoint (Roadmap Demo). |
-| `GET` | `/api/analysis/{id}` | Retrieve full analysis report and grounded findings by ID. |
-| `GET` | `/api/analysis` | List analysis history with pagination, search, and modality/risk filters. |
-| `GET` | `/api/config/trust-engine` | Inspect active trust weights and band thresholds. |
-| `PUT` | `/api/config/trust-engine` | Update trust scoring weights dynamically at runtime. |
-| `GET` | `/api/health` | Service health status. |
+| Image | [ARTIFACT](https://www.kaggle.com/datasets/awsaf49/artifact-dataset) | GANs & diffusion models (22 generators) |
+| Audio | [ASVspoof 2019 LA](https://www.kaggle.com/datasets/awsaf49/asvpoof-2019-dataset) | TTS & voice conversion |
+| Video | [FakeAVCeleb v1.2](https://www.kaggle.com/datasets/sidhanbirsingh/avceleb) | Face swaps, lip sync, cross-modal desync |
 
 ---
 
-## 10. Model Integration Architecture
+## License
 
-Models inherit from [`BaseAuthenticityModel`](backend/app/models/base.py) and are managed as singletons via [`ModelRegistry`](backend/app/models/registry.py):
-
-- **Image Adapters**: EfficientNet-B4, Xception, Vision Transformer (ViT-L/14), ConvNeXt-Large.
-- **Video Adapters**: TimeSformer, Video Swin Transformer, 3D ResNet-18.
-- **Audio Adapters**: Wav2Vec 2.0, Audio Spectrogram Transformer (AST), RawNet2.
-- **Text Adapters**: DeBERTa-v3-Large, RoBERTa-Large-MNLI.
-- **OCR Adapters**: Tesseract, EasyOCR, PaddleOCR.
-
----
-
-## 11. Dataset Instructions & Mounting
-
-See [`datasets/README.md`](datasets/README.md) for instructions on mounting official academic benchmarks:
-- **FaceForensics++**: Facial tampering & compression forensics.
-- **GenImage**: Generative diffusion vs. authentic camera photos.
-- **CASIA v2.0**: Splicing & copy-move ground-truth masks.
-- **ASVspoof 2021**: Voice cloning and synthetic audio.
-- **FEVER / LIAR**: Fact verification and stance extraction.
-
----
-
-## 12. Testing & Verification
-
-### Automated Backend Tests
-```bash
-cd backend
-python -m pytest tests -v
-```
-All 16 unit and integration tests validate file security, magic byte matching, upload size restrictions, tampering penalties, and API routing.
-
-### Frontend Typecheck & Build
-```bash
-cd frontend
-npm run build
-```
-
----
-
-## 13. Future Roadmap (Stages 1–6)
-
-- **Stage 1 (Current Active MVP)**: Image forensics, ELA, OpenCV noise residuals, FastAPI backend, Next.js results & history dashboard, explainability.
-- **Stage 2**: Mounting genuine pre-trained EfficientNet / ViT weights with softmax temperature calibration.
-- **Stage 3**: Video frame extraction, face tracking, space-time attention flow, and suspicious frame timeline.
-- **Stage 4**: Audio Mel spectrogram transformation, phase discontinuity, and neural vocoder detection.
-- **Stage 5**: Automated claim proposition extraction and live vector retrieval across verified fact-checking corpuses.
-- **Stage 6**: End-to-end multimodal attention fusion, enterprise team workspaces, and PDF compliance export.
-
----
-
-## 14. Scientific Limitations & Ethical AI
-
-> **Important**: Output scores represent model-based statistical estimations and should **not** be treated as absolute proof of authenticity or deception. AI detection is probabilistic and subject to false positives from legitimate post-processing, social media re-compression, or optical hardware variations.
->
-> TrustNet AI enforces privacy-by-design: all uploads are processed ephemerally with zero permanent storage of biometric assets.
+MIT — see [LICENSE](LICENSE).

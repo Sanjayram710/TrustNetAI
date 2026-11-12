@@ -1,42 +1,136 @@
-# Node & Next.js
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-frontend/build/
-.npm/
+# DeepFake Detection System — .gitignore
 
-# Python & FastAPI
+# Model Weights & Serialized Artifacts
+*.pth
+*.pt
+!*best_image_detector.pt
+*.bin
+*.safetensors
+*.ckpt
+*.joblib
+*.pkl
+*.pickle
+*.npz
+*.h5
+*.hdf5
+
+# XGBoost model files
+*.model
+*.json.model
+
+# Whisper/HuggingFace model directories
+models/*
+!FinalFrameWork/models/best_image_detector.pt
+!models/best_image_detector.pt
+Final-Vid/xgboost_fusion_model.joblib
+
+# Local legacy files
+backend/
+frontend/
+training/
+uploads/
+DLFONE/
+New folder/
+CIFAKE*
+GenImage*
+Alzheimers*
+.vscode/
+
+# Dataset Files
+# *.csv
+# *.npy
+# *.flac
+# *.wav
+# *.mp4
+# *.avi
+# *.mov
+# *.mkv
+# *.mp3
+# *.jpg
+# *.jpeg
+# *.png
+# *.bmp
+# *.tiff
+# *.webp
+
+# Dataset directories
+data/
+datasets/
+raw/
+processed/
+frames/
+splits/
+
+# Jupyter Notebook Output
+# Uncomment below to strip notebook outputs (recommended for large notebooks)
+# *.ipynb
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
 .Python
-backend/env/
-backend/venv/
-backend/.venv/
 env/
 venv/
 .venv/
-.pytest_cache/
-.coverage
-htmlcov/
-*.egg-info/
+pip-wheel-metadata/
+*.pyo
 
-# Uploads and temporary runtime data
-backend/uploads/*
-!backend/uploads/.gitkeep
-backend/data/analyses.json
-
-# Environment variables
+# Environment & Secrets
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*.local
+secrets.yaml
+config_local.py
+credentials.json
 
-# OS / IDE
-.DS_Store
-Thumbs.db
+# Streamlit
+.streamlit/
+
+# Temporary Files & Caches
+*.tmp
+*.temp
+/tmp/
+temp/
+cache/
+.cache/
+__pycache__/
+
+# HuggingFace model cache
+~/.cache/huggingface/
+.huggingface/
+
+# Kaggle
+.kaggle/
+
+# IDE & Editor Files
 .vscode/
 .idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
+
+# Logs & Reports
 *.log
+logs/
+Forensic_Reports/
+artifacts_v2/
+fusion_artifacts/
+
+# Colab / Kaggle Working Dirs
+/kaggle/
+/content/
+
