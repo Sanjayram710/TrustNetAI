@@ -96,7 +96,7 @@ st.sidebar.title("🛡️ Deepfake Guard")
 st.sidebar.markdown("---")
 app_mode = st.sidebar.radio(
     "Select Analysis Module:",
-    ["🖼️ Image Analysis", "🎙️ Audio Analysis", "🎥 Video Analysis"]
+    ["🖼️ Image Analysis", "🎙️ Audio Analysis", "🎥 Video Analysis", "📊 Evaluation & Confusion Matrix"]
 )
 
 # 5. Image Analysis Module
@@ -304,4 +304,85 @@ elif app_mode == "🎥 Video Analysis":
                             "The video exhibits consistent audiovisual coherence. "
                             "Frame-level forensics and acoustic analysis suggest "
                             "authentic, unmanipulated content."
-                        )
+                        )
+
+# 8. Evaluation & Forensic Metrics Module
+elif app_mode == "📊 Evaluation & Confusion Matrix":
+    st.title("Model Performance & Confusion Matrix Analysis")
+    st.markdown(
+        "Empirical evaluation metrics and diagnostic error matrices across training epochs "
+        "and balanced test partitions."
+    )
+    
+    # Key Performance Indicator Metrics
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("AUC-ROC Score", "0.9173", "+0.075 vs Baseline")
+    m2.metric("Overall Accuracy", "83.63%", "20,000 Test Set")
+    m3.metric("F1-Score", "0.8354", "Harmonic Mean")
+    m4.metric("Specificity (Real)", "84.17%", "True Negative Rate")
+    
+    st.markdown("---")
+    
+    tab1, tab2, tab3 = st.tabs(["📈 Training Curves & Loss", "🎯 Confusion Matrix", "📄 Full Academic Report"])
+    
+    reports_dir = os.path.join(os.path.dirname(__file__), "reports")
+    curves_file = os.path.join(reports_dir, "model_training_curves.png")
+    cm_file = os.path.join(reports_dir, "confusion_matrix.png")
+    sheet_file = os.path.join(reports_dir, "performance_report_sheet.png")
+    
+    with tab1:
+        st.subheader("Model Accuracy and Loss Trajectories Across Epochs")
+        st.markdown(
+            "Tracking convergence behavior of Training vs. Validation Loss and Accuracy "
+            "over progressive unfreezing phases."
+        )
+        if os.path.exists(curves_file):
+            st.image(curves_file, use_container_width=True)
+            with open(curves_file, "rb") as f:
+                st.download_button(
+                    "📥 Download Training Curves (High Res PNG)",
+                    f,
+                    file_name="model_training_curves.png",
+                    mime="image/png"
+                )
+    
+    with tab2:
+        st.subheader("Confusion Matrix (Real vs. AI-Generated)")
+        st.markdown(
+            "The confusion matrix evaluates model accuracy by comparing actual ground-truth "
+            "labels with neural predictions across 20,000 balanced test samples."
+        )
+        col_cm1, col_cm2 = st.columns([1.2, 1], gap="large")
+        with col_cm1:
+            if os.path.exists(cm_file):
+                st.image(cm_file, use_container_width=True)
+                with open(cm_file, "rb") as f:
+                    st.download_button(
+                        "📥 Download Confusion Matrix (High Res PNG)",
+                        f,
+                        file_name="confusion_matrix.png",
+                        mime="image/png"
+                    )
+        with col_cm2:
+            st.markdown("### Forensic Audit Breakdown")
+            st.markdown("""
+            * **True Negatives (TN):** `8,417` genuine images correctly identified as **Real** (84.17% Specificity).
+            * **True Positives (TP):** `8,308` deepfakes correctly identified as **Fake (AI)** (83.08% Sensitivity).
+            * **False Positives (FP):** `1,583` genuine images misclassified as fake.
+            * **False Negatives (FN):** `1,692` deepfakes that bypassed detection.
+            
+            **Mathematical Formulation:**
+            $$\\\\text{Accuracy} = \\\\frac{TP + TN}{TP + TN + FP + FN} = \\\\frac{8308 + 8417}{20000} = 83.63\\\\%$$
+            """)
+    
+    with tab3:
+        st.subheader("Publication-Style Academic Performance Report")
+        if os.path.exists(sheet_file):
+            st.image(sheet_file, use_container_width=True)
+            with open(sheet_file, "rb") as f:
+                st.download_button(
+                    "📥 Download Complete Report Sheet (PNG)",
+                    f,
+                    file_name="deepfake_performance_report.png",
+                    mime="image/png"
+                )
